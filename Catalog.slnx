@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/building-blocks/">
+    <Project Path="building-blocks/Fcg.Contracts/Fcg.Contracts.csproj" />
+    <Project Path="building-blocks/Fcg.Messaging/Fcg.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Catalog.API/Catalog.API.csproj" />
+    <Project Path="src/Catalog.Application/Catalog.Application.csproj" />
+    <Project Path="src/Catalog.Domain/Catalog.Domain.csproj" />
+    <Project Path="src/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Catalog.Tests/Catalog.Tests.csproj" />
+  </Folder>
+</Solution>
