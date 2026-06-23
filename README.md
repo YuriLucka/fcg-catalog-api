@@ -77,4 +77,4 @@ O serviço ficará disponível em **http://localhost:5002**.
 
 ## Repositório
 
-> Placeholder: `<catalog-api repo>` (preencher após split de repositórios)
+> Repositório: https://github.com/YuriLucka/fcg-catalog-api
