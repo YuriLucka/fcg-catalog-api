@@ -91,7 +91,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddSimpleConsole(o =>
+{
+    o.ColorBehavior = Microsoft.Extensions.Logging.Console.LoggerColorBehavior.Enabled;
+    o.SingleLine = true;
+});
 
 var app = builder.Build();
 
