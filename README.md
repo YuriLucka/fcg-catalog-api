@@ -22,7 +22,7 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 |-----------------------------------------|-------------|----------------------------------------------------|------------------------------------|
 | `ConnectionStrings__DefaultConnection` | Sim         | `(localdb)\MSSQLLocalDB;Database=FcgCatalog;...`  | Connection string SQL Server       |
 | `JwtSettings__SecretKey`               | Sim         | `fiap-cloud-games-secret-key-minimo-32-chars!`    | Chave secreta do JWT (≥32 chars)   |
-| `JwtSettings__Issuer`                  | Sim         | `Users.API`                                       | Issuer do token JWT (deve ser o mesmo do users-api) |
+| `JwtSettings__Issuer`                  | Sim         | `FiapCloudGames`                                  | Issuer do token JWT (deve ser o mesmo do users-api) |
 | `JwtSettings__Audience`               | Sim         | `FiapCloudGames.Client`                           | Audience do token JWT              |
 | `RabbitMq__Host`                       | Sim         | `localhost`                                       | Host do RabbitMQ                   |
 | `RabbitMq__User`                       | Não         | `guest`                                           | Usuário do RabbitMQ                |
@@ -60,7 +60,7 @@ curl -X POST http://localhost:5002/api/purchases \
 **Pré-requisitos:** .NET 8 SDK, SQL Server (LocalDB ou instância local), RabbitMQ.
 
 ```bash
-cd services/catalog-api/src/Catalog.API
+cd src/Catalog.API
 dotnet run
 # Swagger disponível em http://localhost:<porta>/ (modo Development)
 ```
@@ -70,7 +70,7 @@ dotnet run
 A partir da raiz do repositório:
 
 ```bash
-docker compose -f orchestration/docker-compose.yml up --build catalog-api catalog-db rabbitmq
+docker compose -f ../fcg-orchestration/docker-compose.yml up --build catalog-api catalog-db rabbitmq
 ```
 
 O serviço ficará disponível em **http://localhost:5002**.
