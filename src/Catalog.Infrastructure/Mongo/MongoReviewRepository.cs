@@ -30,7 +30,7 @@ namespace Catalog.Infrastructure.Mongo
             _collection = database.GetCollection<ReviewDocument>("reviews");
         }
 
-        public Task AddAsync(Review review)
+        public async Task AddAsync(Review review)
         {
             var doc = new ReviewDocument
             {
@@ -40,7 +40,8 @@ namespace Catalog.Infrastructure.Mongo
                 Comment = review.Comment,
                 CreatedAt = review.CreatedAt
             };
-            return _collection.InsertOneAsync(doc);
+            await _collection.InsertOneAsync(doc);
+            typeof(Review).GetProperty(nameof(Review.Id))!.SetValue(review, doc.Id);
         }
 
         public async Task<IEnumerable<Review>> GetByGameIdAsync(Guid gameId)
