@@ -19,6 +19,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 builder.Services.AddFcgMessaging(builder.Configuration,
     x => x.AddConsumer<PaymentProcessedConsumer>());
