@@ -46,6 +46,12 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | `POST`   | `/api/Review`               | Bearer (user)  | Registra avaliação de um jogo                |
 | `GET`    | `/api/Review/game/{gameId}` | Bearer (user)  | Lista avaliações de um jogo                  |
 
+## Observabilidade
+
+| Rota       | Descrição                                              |
+|------------|----------------------------------------------------------|
+| `/metrics` | Métricas Prometheus (contagem de requisições, latência, status code) — raspado pelo Prometheus da orchestration |
+
 ### Exemplos de uso
 
 ```bash
