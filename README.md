@@ -27,6 +27,8 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | `RabbitMq__Host`                       | Sim         | `localhost`                                       | Host do RabbitMQ                   |
 | `RabbitMq__User`                       | Não         | `guest`                                           | Usuário do RabbitMQ                |
 | `RabbitMq__Pass`                       | Não         | `guest`                                           | Senha do RabbitMQ                  |
+| `MongoSettings__ConnectionString`      | Sim         | `mongodb://localhost:27017`                       | Connection string do MongoDB (avaliações) |
+| `MongoSettings__Database`              | Sim         | `fcg_catalog`                                     | Nome do database Mongo             |
 
 > No Docker Compose e K8s, `JwtSettings__Issuer` = `FiapCloudGames` e `ConnectionStrings__DefaultConnection` aponta para `catalog-db`.
 
@@ -40,6 +42,8 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | `PUT`    | `/api/game/{id}`            | Bearer (Admin) | Atualiza dados de um jogo                    |
 | `DELETE` | `/api/game/{id}`            | Bearer (Admin) | Remove um jogo                               |
 | `POST`   | `/api/purchases`            | Bearer (user)  | Inicia a compra de um jogo                   |
+| `POST`   | `/api/Review`               | Bearer (user)  | Registra avaliação de um jogo                |
+| `GET`    | `/api/Review/game/{gameId}` | Bearer (user)  | Lista avaliações de um jogo                  |
 
 ### Exemplos de uso
 
