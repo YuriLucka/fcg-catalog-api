@@ -29,6 +29,7 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | `RabbitMq__Pass`                       | Não         | `guest`                                           | Senha do RabbitMQ                  |
 | `MongoSettings__ConnectionString`      | Sim         | `mongodb://localhost:27017`                       | Connection string do MongoDB (avaliações) |
 | `MongoSettings__Database`              | Sim         | `fcg_catalog`                                     | Nome do database Mongo             |
+| `RedisSettings__ConnectionString`      | Sim         | `localhost:6379`                                  | Connection string do Redis (cache) |
 
 > No Docker Compose e K8s, `JwtSettings__Issuer` = `FiapCloudGames` e `ConnectionStrings__DefaultConnection` aponta para `catalog-db`.
 
