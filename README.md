@@ -84,7 +84,7 @@ A partir da raiz do repositório:
 docker compose -f ../fcg-orchestration/docker-compose.yml up --build catalog-api catalog-db rabbitmq
 ```
 
-O serviço ficará disponível em **http://localhost:5002**.
+A partir da Fase 3, o serviço não é mais acessível direto — todo tráfego externo passa pelo Kong (`fcg-orchestration`), em **http://localhost:8000/api/Game**, **http://localhost:8000/api/purchases** e **http://localhost:8000/api/Review**. Ver o README do `fcg-orchestration` para detalhes do gateway.
 
 ## Repositório
 
