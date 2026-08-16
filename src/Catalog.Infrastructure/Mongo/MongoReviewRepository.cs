@@ -28,6 +28,9 @@ namespace Catalog.Infrastructure.Mongo
         public MongoReviewRepository(IMongoDatabase database)
         {
             _collection = database.GetCollection<ReviewDocument>("reviews");
+
+            var indexKeys = Builders<ReviewDocument>.IndexKeys.Ascending(d => d.GameId);
+            _collection.Indexes.CreateOneAsync(new CreateIndexModel<ReviewDocument>(indexKeys));
         }
 
         public async Task AddAsync(Review review)
@@ -48,6 +51,13 @@ namespace Catalog.Infrastructure.Mongo
         {
             var docs = await _collection.Find(d => d.GameId == gameId).ToListAsync();
             return docs.Select(ToEntity);
+        }
+
+        public async Task<bool> ExistsAsync(Guid userId, Guid gameId)
+        {
+            return await _collection
+                .Find(d => d.UserId == userId && d.GameId == gameId)
+                .AnyAsync();
         }
 
         private static Review ToEntity(ReviewDocument doc)

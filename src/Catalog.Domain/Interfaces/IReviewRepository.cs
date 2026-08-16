@@ -6,5 +6,6 @@ namespace Catalog.Domain.Interfaces
     {
         Task AddAsync(Review review);
         Task<IEnumerable<Review>> GetByGameIdAsync(Guid gameId);
+        Task<bool> ExistsAsync(Guid userId, Guid gameId);
     }
 }

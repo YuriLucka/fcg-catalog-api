@@ -13,10 +13,15 @@ namespace Catalog.Domain.Entities
 
         protected Review() { }
 
+        public const int ComentarioTamanhoMaximo = 1000;
+
         public Review(Guid gameId, Guid userId, int rating, string? comment = null)
         {
             if (rating is < 1 or > 5)
                 throw new DomainException("Rating deve estar entre 1 e 5.");
+
+            if (comment is { Length: > ComentarioTamanhoMaximo })
+                throw new DomainException($"Comentário deve ter no máximo {ComentarioTamanhoMaximo} caracteres.");
 
             GameId = gameId;
             UserId = userId;

@@ -27,5 +27,22 @@ namespace Catalog.Tests.Domain
             Assert.Throws<DomainException>(() =>
                 new Review(Guid.NewGuid(), Guid.NewGuid(), rating, "comentário"));
         }
+
+        [Fact]
+        public void Construtor_DeveLancarExcecao_QuandoComentarioExcederLimite()
+        {
+            var comentarioMuitoLongo = new string('a', 1001);
+
+            Assert.Throws<DomainException>(() =>
+                new Review(Guid.NewGuid(), Guid.NewGuid(), 5, comentarioMuitoLongo));
+        }
+
+        [Fact]
+        public void Construtor_DeveCriarReview_QuandoComentarioForNulo()
+        {
+            var review = new Review(Guid.NewGuid(), Guid.NewGuid(), 5, null);
+
+            Assert.Null(review.Comment);
+        }
     }
 }
