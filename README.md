@@ -37,11 +37,11 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 
 | Método   | Rota                        | Auth           | Descrição                                    |
 |----------|-----------------------------|----------------|----------------------------------------------|
-| `GET`    | `/api/game`                 | Bearer (user)  | Lista todos os jogos do catálogo             |
-| `GET`    | `/api/game/{id}`            | Bearer (user)  | Retorna um jogo pelo id                      |
-| `POST`   | `/api/game`                 | Bearer (Admin) | Cadastra novo jogo                           |
-| `PUT`    | `/api/game/{id}`            | Bearer (Admin) | Atualiza dados de um jogo                    |
-| `DELETE` | `/api/game/{id}`            | Bearer (Admin) | Remove um jogo                               |
+| `GET`    | `/api/Game`                 | Bearer (user)  | Lista todos os jogos do catálogo             |
+| `GET`    | `/api/Game/{id}`            | Bearer (user)  | Retorna um jogo pelo id                      |
+| `POST`   | `/api/Game`                 | Bearer (Admin) | Cadastra novo jogo                           |
+| `PUT`    | `/api/Game/{id}`            | Bearer (Admin) | Atualiza dados de um jogo                    |
+| `DELETE` | `/api/Game/{id}`            | Bearer (Admin) | Remove um jogo                               |
 | `POST`   | `/api/purchases`            | Bearer (user)  | Inicia a compra de um jogo                   |
 | `POST`   | `/api/Review`               | Bearer (user)  | Registra avaliação de um jogo                |
 | `GET`    | `/api/Review/game/{gameId}` | Bearer (user)  | Lista avaliações de um jogo                  |
@@ -56,11 +56,11 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 
 ```bash
 # Listar jogos (precisa de token JWT)
-curl http://localhost:5002/api/game \
+curl http://localhost:8000/api/Game \
   -H "Authorization: Bearer <token>"
 
 # Comprar jogo
-curl -X POST http://localhost:5002/api/purchases \
+curl -X POST http://localhost:8000/api/purchases \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"gameId":"<guid-do-jogo>"}'
