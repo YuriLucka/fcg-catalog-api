@@ -5,6 +5,7 @@ using Catalog.Domain.Entities;
 using Catalog.Domain.Exceptions;
 using Catalog.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 
 namespace Catalog.Application.Services
 {
@@ -18,11 +19,13 @@ namespace Catalog.Application.Services
 
         private readonly IGameRepository _gameRepository;
         private readonly IDistributedCache _cache;
+        private readonly ILogger<GameService> _logger;
 
-        public GameService(IGameRepository gameRepository, IDistributedCache cache)
+        public GameService(IGameRepository gameRepository, IDistributedCache cache, ILogger<GameService> logger)
         {
             _gameRepository = gameRepository;
             _cache = cache;
+            _logger = logger;
         }
 
         public async Task<GameDto> GetByIdAsync(Guid id)
@@ -35,14 +38,14 @@ namespace Catalog.Application.Services
 
         public async Task<IEnumerable<GameDto>> GetAllAsync()
         {
-            var cached = await _cache.GetAsync(AllGamesCacheKey);
+            var cached = await TryGetCacheAsync();
             if (cached is not null)
                 return JsonSerializer.Deserialize<List<GameDto>>(cached)!;
 
             var games = await _gameRepository.GetAllAsync();
             var dtos = games.Select(MapToDto).ToList();
 
-            await _cache.SetAsync(AllGamesCacheKey, JsonSerializer.SerializeToUtf8Bytes(dtos), CacheOptions);
+            await TrySetCacheAsync(dtos);
             return dtos;
         }
 
@@ -50,7 +53,7 @@ namespace Catalog.Application.Services
         {
             var game = new Game(dto.Title, dto.Price, dto.Description);
             await _gameRepository.AddAsync(game);
-            await _cache.RemoveAsync(AllGamesCacheKey);
+            await TryRemoveCacheAsync();
             return MapToDto(game);
         }
 
@@ -61,7 +64,7 @@ namespace Catalog.Application.Services
 
             game.Update(dto.Title, dto.Price, dto.Description);
             await _gameRepository.UpdateAsync(game);
-            await _cache.RemoveAsync(AllGamesCacheKey);
+            await TryRemoveCacheAsync();
 
             return MapToDto(game);
         }
@@ -72,7 +75,44 @@ namespace Catalog.Application.Services
                 ?? throw new DomainException($"Jogo com Id '{id}' não encontrado.");
 
             await _gameRepository.DeleteAsync(game.Id);
-            await _cache.RemoveAsync(AllGamesCacheKey);
+            await TryRemoveCacheAsync();
+        }
+
+        private async Task<byte[]?> TryGetCacheAsync()
+        {
+            try
+            {
+                return await _cache.GetAsync(AllGamesCacheKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao ler o cache Redis (chave '{CacheKey}'). Consultando o SQL Server normalmente.", AllGamesCacheKey);
+                return null;
+            }
+        }
+
+        private async Task TrySetCacheAsync(List<GameDto> dtos)
+        {
+            try
+            {
+                await _cache.SetAsync(AllGamesCacheKey, JsonSerializer.SerializeToUtf8Bytes(dtos), CacheOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao gravar o cache Redis (chave '{CacheKey}').", AllGamesCacheKey);
+            }
+        }
+
+        private async Task TryRemoveCacheAsync()
+        {
+            try
+            {
+                await _cache.RemoveAsync(AllGamesCacheKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao invalidar o cache Redis (chave '{CacheKey}').", AllGamesCacheKey);
+            }
         }
 
         private static GameDto MapToDto(Game game) => new(

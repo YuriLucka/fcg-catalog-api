@@ -4,6 +4,8 @@ using Catalog.Domain.Entities;
 using Catalog.Domain.Exceptions;
 using Catalog.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Catalog.Tests.Application
@@ -19,7 +21,7 @@ namespace Catalog.Tests.Application
             _gameRepoMock = new Mock<IGameRepository>();
             _cacheMock = new Mock<IDistributedCache>();
             _cacheMock.Setup(c => c.GetAsync(It.IsAny<string>(), default)).ReturnsAsync((byte[]?)null);
-            _gameService = new GameService(_gameRepoMock.Object, _cacheMock.Object);
+            _gameService = new GameService(_gameRepoMock.Object, _cacheMock.Object, NullLogger<GameService>.Instance);
         }
 
         // ── CreateAsync ─────────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ namespace Catalog.Tests.Application
             cacheMock.Setup(c => c.GetAsync("catalog:games:all", default)).ReturnsAsync((byte[]?)null);
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Game> { new("CS2", 59.90m) });
-            var service = new GameService(repoMock.Object, cacheMock.Object);
+            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
 
             var result = await service.GetAllAsync();
 
@@ -123,11 +125,43 @@ namespace Catalog.Tests.Application
             var cacheMock = new Mock<IDistributedCache>();
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.AddAsync(It.IsAny<Game>())).Returns(Task.CompletedTask);
-            var service = new GameService(repoMock.Object, cacheMock.Object);
+            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
 
             await service.CreateAsync(new CreateGameDto("Novo Jogo", 10m, null));
 
             cacheMock.Verify(c => c.RemoveAsync("catalog:games:all", default), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_DeveConsultarRepositorio_QuandoCacheFalhar()
+        {
+            var cacheMock = new Mock<IDistributedCache>();
+            cacheMock.Setup(c => c.GetAsync("catalog:games:all", default))
+                .ThrowsAsync(new Exception("Redis indisponível"));
+            var repoMock = new Mock<IGameRepository>();
+            repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Game> { new("CS2", 59.90m) });
+            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+
+            var result = await service.GetAllAsync();
+
+            Assert.Single(result);
+            repoMock.Verify(r => r.GetAllAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_DeveCompletarComSucesso_QuandoInvalidacaoDeCacheFalhar()
+        {
+            var cacheMock = new Mock<IDistributedCache>();
+            cacheMock.Setup(c => c.RemoveAsync("catalog:games:all", default))
+                .ThrowsAsync(new Exception("Redis indisponível"));
+            var repoMock = new Mock<IGameRepository>();
+            repoMock.Setup(r => r.AddAsync(It.IsAny<Game>())).Returns(Task.CompletedTask);
+            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+
+            var result = await service.CreateAsync(new CreateGameDto("Novo Jogo", 10m, null));
+
+            Assert.Equal("Novo Jogo", result.Title);
+            repoMock.Verify(r => r.AddAsync(It.IsAny<Game>()), Times.Once);
         }
     }
 }
