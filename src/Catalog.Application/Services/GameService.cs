@@ -14,7 +14,7 @@ namespace Catalog.Application.Services
         private const string AllGamesCacheKey = "catalog:games:all";
         private static readonly DistributedCacheEntryOptions CacheOptions = new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
         };
 
         private readonly IGameRepository _gameRepository;
