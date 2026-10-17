@@ -53,19 +53,6 @@ jobs:
           resource-group: ${{ env.RG }}
           cluster-name: ${{ env.AKS }}
 
-      - name: Secret da API
-        run: |
-          kubectl -n $NS create secret generic catalog-secret \
-            --from-literal=ConnectionStrings__DefaultConnection='${{ secrets.DB_CONN }}' \
-            --from-literal=JwtSettings__SecretKey='${{ secrets.JWT_SECRET }}' \
-            --from-literal=RabbitMq__User='${{ secrets.RABBIT_USER }}' \
-            --from-literal=RabbitMq__Pass='${{ secrets.RABBIT_PASS }}' \
-            --from-literal=MongoSettings__ConnectionString='${{ secrets.MONGO_CONN }}' \
-            --from-literal=RedisSettings__ConnectionString='${{ secrets.REDIS_CONN }}' \
-            --from-literal=Elasticsearch__Url='${{ secrets.ES_URL }}' \
-            --from-literal=Elasticsearch__ApiKey='${{ secrets.ES_APIKEY }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
-
       - name: Deploy (rolling update)
         run: |
           sed -i "s/IMAGE_TAG/$TAG/" k8s/deployment.yaml

@@ -18,6 +18,7 @@ spec:
       labels:
         app: catalog-api
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: catalog-api
           image: acrfiapyuri.azurecr.io/catalog-api:IMAGE_TAG
@@ -35,6 +36,11 @@ spec:
               cpu: 100m
             limits:
               memory: 512Mi
+          lifecycle:
+            preStop:
+              # Dá tempo do endpoint sair do Service/Kong antes do Kestrel parar (evita 502 no rolling update).
+              exec:
+                command: ["sleep", "10"]
           readinessProbe:
             tcpSocket:
               port: 8080
