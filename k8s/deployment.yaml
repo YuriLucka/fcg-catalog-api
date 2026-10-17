@@ -5,6 +5,11 @@ metadata:
   namespace: fcg
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: catalog-api
@@ -15,7 +20,7 @@ spec:
     spec:
       containers:
         - name: catalog-api
-          image: fcg/catalog-api:latest
+          image: acrfiapyuri.azurecr.io/catalog-api:IMAGE_TAG
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -24,6 +29,12 @@ spec:
                 name: catalog-config
             - secretRef:
                 name: catalog-secret
+          resources:
+            requests:
+              memory: 192Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
           readinessProbe:
             tcpSocket:
               port: 8080
@@ -32,5 +43,6 @@ spec:
           livenessProbe:
             tcpSocket:
               port: 8080
-            initialDelaySeconds: 20
+            initialDelaySeconds: 45
             periodSeconds: 15
+            failureThreshold: 8

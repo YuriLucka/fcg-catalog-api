@@ -6,7 +6,7 @@ namespace Fcg.Messaging;
 
 public static class MassTransitExtensions
 {
-    // Lê RabbitMq:Host/User/Pass (ConfigMap + Secret). Registra retry padrão.
+    // Lê RabbitMq:Host/User/Pass (ConfigMap + Secret); falha se faltar. Registra retry padrão.
     public static IServiceCollection AddFcgMessaging(
         this IServiceCollection services,
         IConfiguration cfg,
@@ -19,15 +19,23 @@ public static class MassTransitExtensions
 
             x.UsingRabbitMq((ctx, bus) =>
             {
-                bus.Host(cfg["RabbitMq:Host"] ?? "rabbitmq", h =>
+                bus.Host(Required(cfg, "RabbitMq:Host"), h =>
                 {
-                    h.Username(cfg["RabbitMq:User"] ?? "guest");
-                    h.Password(cfg["RabbitMq:Pass"] ?? "guest");
+                    h.Username(Required(cfg, "RabbitMq:User"));
+                    h.Password(Required(cfg, "RabbitMq:Pass"));
                 });
                 bus.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
                 bus.ConfigureEndpoints(ctx);
             });
         });
         return services;
+    }
+
+    private static string Required(IConfiguration cfg, string key)
+    {
+        var value = cfg[key];
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"Configuração '{key}' não informada.");
+        return value;
     }
 }
