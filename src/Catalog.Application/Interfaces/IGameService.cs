@@ -9,5 +9,7 @@ namespace Catalog.Application.Interfaces
         Task<GameDto> CreateAsync(CreateGameDto dto);
         Task<GameDto> UpdateAsync(Guid id, UpdateGameDto dto);
         Task DeleteAsync(Guid id);
+        Task<IReadOnlyList<GameDto>> SearchAsync(string query);
+        Task EnsureSearchIndexAsync();
     }
 }

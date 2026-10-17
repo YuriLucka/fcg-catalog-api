@@ -1,4 +1,6 @@
 using Catalog.Application.DTOs;
+using Catalog.Application.Exceptions;
+using Catalog.Application.Interfaces;
 using Catalog.Application.Services;
 using Catalog.Domain.Entities;
 using Catalog.Domain.Exceptions;
@@ -14,6 +16,7 @@ namespace Catalog.Tests.Application
     {
         private readonly Mock<IGameRepository> _gameRepoMock;
         private readonly Mock<IDistributedCache> _cacheMock;
+        private readonly Mock<IGameSearchService> _searchMock;
         private readonly GameService _gameService;
 
         public GameServiceTests()
@@ -21,7 +24,8 @@ namespace Catalog.Tests.Application
             _gameRepoMock = new Mock<IGameRepository>();
             _cacheMock = new Mock<IDistributedCache>();
             _cacheMock.Setup(c => c.GetAsync(It.IsAny<string>(), default)).ReturnsAsync((byte[]?)null);
-            _gameService = new GameService(_gameRepoMock.Object, _cacheMock.Object, NullLogger<GameService>.Instance);
+            _searchMock = new Mock<IGameSearchService>();
+            _gameService = new GameService(_gameRepoMock.Object, _cacheMock.Object, _searchMock.Object, NullLogger<GameService>.Instance);
         }
 
         // ── CreateAsync ─────────────────────────────────────────────────────────
@@ -110,7 +114,7 @@ namespace Catalog.Tests.Application
             cacheMock.Setup(c => c.GetAsync("catalog:games:all", default)).ReturnsAsync((byte[]?)null);
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Game> { new("CS2", 59.90m) });
-            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+            var service = new GameService(repoMock.Object, cacheMock.Object, Mock.Of<IGameSearchService>(), NullLogger<GameService>.Instance);
 
             var result = await service.GetAllAsync();
 
@@ -125,7 +129,7 @@ namespace Catalog.Tests.Application
             var cacheMock = new Mock<IDistributedCache>();
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.AddAsync(It.IsAny<Game>())).Returns(Task.CompletedTask);
-            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+            var service = new GameService(repoMock.Object, cacheMock.Object, Mock.Of<IGameSearchService>(), NullLogger<GameService>.Instance);
 
             await service.CreateAsync(new CreateGameDto("Novo Jogo", 10m, null));
 
@@ -140,7 +144,7 @@ namespace Catalog.Tests.Application
                 .ThrowsAsync(new Exception("Redis indisponível"));
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Game> { new("CS2", 59.90m) });
-            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+            var service = new GameService(repoMock.Object, cacheMock.Object, Mock.Of<IGameSearchService>(), NullLogger<GameService>.Instance);
 
             var result = await service.GetAllAsync();
 
@@ -156,12 +160,116 @@ namespace Catalog.Tests.Application
                 .ThrowsAsync(new Exception("Redis indisponível"));
             var repoMock = new Mock<IGameRepository>();
             repoMock.Setup(r => r.AddAsync(It.IsAny<Game>())).Returns(Task.CompletedTask);
-            var service = new GameService(repoMock.Object, cacheMock.Object, NullLogger<GameService>.Instance);
+            var service = new GameService(repoMock.Object, cacheMock.Object, Mock.Of<IGameSearchService>(), NullLogger<GameService>.Instance);
 
             var result = await service.CreateAsync(new CreateGameDto("Novo Jogo", 10m, null));
 
             Assert.Equal("Novo Jogo", result.Title);
             repoMock.Verify(r => r.AddAsync(It.IsAny<Game>()), Times.Once);
+        }
+            // ── Busca (Elasticsearch) ───────────────────────────────────────────────
+
+        [Fact]
+        public async Task CreateAsync_DeveIndexarJogo()
+        {
+            var result = await _gameService.CreateAsync(new CreateGameDto("Zelda", 199m, "Aventura"));
+
+            _searchMock.Verify(s => s.IndexAsync(It.Is<GameDto>(g => g.Id == result.Id && g.Title == "Zelda"), default), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_DeveReindexarJogo()
+        {
+            var game = new Game("Zelda", 199m);
+            _gameRepoMock.Setup(r => r.GetByIdAsync(game.Id)).ReturnsAsync(game);
+
+            await _gameService.UpdateAsync(game.Id, new UpdateGameDto("Zelda TOTK", 249m, null));
+
+            _searchMock.Verify(s => s.IndexAsync(It.Is<GameDto>(g => g.Id == game.Id && g.Title == "Zelda TOTK"), default), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_DeveRemoverDoIndice()
+        {
+            var game = new Game("Zelda", 199m);
+            _gameRepoMock.Setup(r => r.GetByIdAsync(game.Id)).ReturnsAsync(game);
+
+            await _gameService.DeleteAsync(game.Id);
+
+            _searchMock.Verify(s => s.RemoveAsync(game.Id, default), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_NaoFalha_QuandoIndexacaoFalha()
+        {
+            _searchMock.Setup(s => s.IndexAsync(It.IsAny<GameDto>(), default)).ThrowsAsync(new HttpRequestException("es down"));
+
+            var result = await _gameService.CreateAsync(new CreateGameDto("Zelda", 199m, null));
+
+            Assert.Equal("Zelda", result.Title);
+            _gameRepoMock.Verify(r => r.AddAsync(It.IsAny<Game>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_NaoFalha_QuandoRemocaoDoIndiceFalha()
+        {
+            var game = new Game("Zelda", 199m);
+            _gameRepoMock.Setup(r => r.GetByIdAsync(game.Id)).ReturnsAsync(game);
+            _searchMock.Setup(s => s.RemoveAsync(game.Id, default)).ThrowsAsync(new HttpRequestException("es down"));
+
+            await _gameService.DeleteAsync(game.Id);
+
+            _gameRepoMock.Verify(r => r.DeleteAsync(game.Id), Times.Once);
+        }
+
+        [Fact]
+        public async Task SearchAsync_DeveRetornarResultadosDoIndice()
+        {
+            var hit = new GameDto(Guid.NewGuid(), "Zelda", null, 199m, true, DateTime.UtcNow);
+            _searchMock.Setup(s => s.SearchAsync("zelad", default)).ReturnsAsync(new List<GameDto> { hit });
+
+            var result = await _gameService.SearchAsync("  zelad ");
+
+            Assert.Single(result);
+            Assert.Equal("Zelda", result[0].Title);
+            _gameRepoMock.Verify(r => r.GetAllAsync(), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task SearchAsync_DeveLancarDomainException_QuandoTermoVazio(string query)
+        {
+            await Assert.ThrowsAsync<DomainException>(() => _gameService.SearchAsync(query));
+            _searchMock.Verify(s => s.SearchAsync(It.IsAny<string>(), default), Times.Never);
+        }
+
+        [Fact]
+        public async Task SearchAsync_DeveLancarSearchUnavailable_QuandoIndiceIndisponivel()
+        {
+            _searchMock.Setup(s => s.SearchAsync(It.IsAny<string>(), default)).ThrowsAsync(new HttpRequestException("es down"));
+
+            await Assert.ThrowsAsync<SearchUnavailableException>(() => _gameService.SearchAsync("zelda"));
+        }
+
+        [Fact]
+        public async Task EnsureSearchIndexAsync_DeveEnviarTodosOsJogos()
+        {
+            var games = new List<Game> { new("Zelda", 199m), new("Mario", 99m) };
+            _gameRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(games);
+
+            await _gameService.EnsureSearchIndexAsync();
+
+            _searchMock.Verify(s => s.EnsureIndexAsync(It.Is<IEnumerable<GameDto>>(l => l.Count() == 2), default), Times.Once);
+        }
+
+        [Fact]
+        public async Task EnsureSearchIndexAsync_NaoFalha_QuandoIndiceIndisponivel()
+        {
+            _gameRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Game>());
+            _searchMock.Setup(s => s.EnsureIndexAsync(It.IsAny<IEnumerable<GameDto>>(), default)).ThrowsAsync(new HttpRequestException("es down"));
+
+            await _gameService.EnsureSearchIndexAsync();
         }
     }
 }
