@@ -20,17 +20,21 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 
 | Variável                                | Obrigatório | Valor padrão (dev local)                          | Descrição                          |
 |-----------------------------------------|-------------|----------------------------------------------------|------------------------------------|
-| `ConnectionStrings__DefaultConnection` | Sim         | `(localdb)\MSSQLLocalDB;Database=FcgCatalog;...`  | Connection string SQL Server       |
-| `JwtSettings__SecretKey`               | Sim         | `fiap-cloud-games-secret-key-minimo-32-chars!`    | Chave secreta do JWT (≥32 chars)   |
+| `ConnectionStrings__DefaultConnection` | Sim         | —                                                  | Connection string SQL Server (Secret) |
+| `JwtSettings__SecretKey`               | Sim         | —                                                  | Chave secreta do JWT (≥32 chars, Secret) |
 | `JwtSettings__Issuer`                  | Sim         | `FiapCloudGames`                                  | Issuer do token JWT (deve ser o mesmo do users-api) |
 | `JwtSettings__Audience`               | Sim         | `FiapCloudGames.Client`                           | Audience do token JWT              |
 | `RabbitMq__Host`                       | Sim         | `localhost`                                       | Host do RabbitMQ                   |
-| `RabbitMq__User`                       | Não         | `guest`                                           | Usuário do RabbitMQ                |
-| `RabbitMq__Pass`                       | Não         | `guest`                                           | Senha do RabbitMQ                  |
-| `MongoSettings__ConnectionString`      | Sim         | `mongodb://localhost:27017`                       | Connection string do MongoDB (avaliações) |
+| `RabbitMq__User`                       | Sim         | —                                                  | Usuário do RabbitMQ (Secret)       |
+| `RabbitMq__Pass`                       | Sim         | —                                                  | Senha do RabbitMQ (Secret)         |
+| `MongoSettings__ConnectionString`      | Sim         | —                                                  | Connection string do MongoDB (avaliações, Secret) |
 | `MongoSettings__Database`              | Sim         | `fcg_catalog`                                     | Nome do database Mongo             |
-| `RedisSettings__ConnectionString`      | Sim         | `localhost:6379`                                  | Connection string do Redis (cache) |
+| `RedisSettings__ConnectionString`      | Sim         | —                                                  | Connection string do Redis (cache, Secret) |
+| `Elasticsearch__Url`                   | Sim         | —                                                  | Endpoint do Elasticsearch (compose: `http://elasticsearch:9200`; nuvem: Elastic Cloud) |
+| `Elasticsearch__ApiKey`                | Não         | vazio                                              | API key do Elastic Cloud (Secret); vazio = sem autenticação |
+| `Elasticsearch__IndexName`             | Não         | `games`                                            | Índice dos jogos                   |
 
+> Nenhum valor sensível fica versionado: no Docker Compose eles vêm do `.env` da orchestration (ver `.env.example`); no AKS, de Kubernetes Secrets criados pelo setup/pipeline a partir de GitHub Secrets.
 > No Docker Compose e K8s, `JwtSettings__Issuer` = `FiapCloudGames` e `ConnectionStrings__DefaultConnection` aponta para `catalog-db`.
 
 ## Endpoints
@@ -38,6 +42,7 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | Método   | Rota                        | Auth           | Descrição                                    |
 |----------|-----------------------------|----------------|----------------------------------------------|
 | `GET`    | `/api/Game`                 | Bearer (user)  | Lista todos os jogos do catálogo             |
+| `GET`    | `/api/Game/search?q={termo}` | Bearer (user) | Busca fuzzy (Elasticsearch) em título e descrição, ordenada por relevância |
 | `GET`    | `/api/Game/{id}`            | Bearer (user)  | Retorna um jogo pelo id                      |
 | `POST`   | `/api/Game`                 | Bearer (Admin) | Cadastra novo jogo                           |
 | `PUT`    | `/api/Game/{id}`            | Bearer (Admin) | Atualiza dados de um jogo                    |

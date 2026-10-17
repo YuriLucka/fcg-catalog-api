@@ -138,6 +138,11 @@ using (var scope = app.Services.CreateScope())
         catch when (attempt < 30) { await Task.Delay(TimeSpan.FromSeconds(5)); }
     }
     await AppDbContext.SeedAsync(db);
+
+    var gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
+    var reindex = gameService.EnsureSearchIndexAsync();
+    if (await Task.WhenAny(reindex, Task.Delay(TimeSpan.FromSeconds(30))) != reindex)
+        app.Logger.LogWarning("Reindexação do Elasticsearch excedeu 30s; a API segue subindo.");
 }
 
 app.Run();

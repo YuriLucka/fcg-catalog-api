@@ -1,3 +1,4 @@
+using Catalog.Application.Exceptions;
 using Catalog.Domain.Exceptions;
 using System.Net;
 using System.Text.Json;
@@ -30,6 +31,11 @@ namespace Catalog.API.Middleware
             {
                 _logger.LogWarning("Acesso não autorizado: {Message}", ex.Message);
                 await WriteResponseAsync(context, HttpStatusCode.Unauthorized, "Acesso não autorizado.");
+            }
+            catch (SearchUnavailableException ex)
+            {
+                _logger.LogWarning("Busca indisponível: {Message}", ex.InnerException?.Message);
+                await WriteResponseAsync(context, HttpStatusCode.ServiceUnavailable, ex.Message);
             }
             catch (Exception ex)
             {

@@ -30,6 +30,25 @@ namespace Catalog.API.Controllers
         }
 
         /// <summary>
+        /// Busca jogos por título e descrição no Elasticsearch, tolerando erros de digitação.
+        /// Resultados ordenados por relevância.
+        /// </summary>
+        /// <param name="q">Termo de busca.</param>
+        /// <response code="200">Jogos encontrados, do mais relevante ao menos relevante.</response>
+        /// <response code="400">Termo de busca vazio.</response>
+        /// <response code="503">Serviço de busca indisponível.</response>
+        [HttpGet("search")]
+        [Authorize]
+        [ProducesResponseType(typeof(IEnumerable<GameDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> Search([FromQuery] string? q)
+        {
+            var games = await _gameService.SearchAsync(q ?? string.Empty);
+            return Ok(games);
+        }
+
+        /// <summary>
         /// Retorna os dados de um jogo pelo seu identificador.
         /// </summary>
         /// <param name="id">Identificador do jogo.</param>
