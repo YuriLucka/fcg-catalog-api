@@ -1,0 +1,73 @@
+name: ci-cd
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-catalog-api
+  cancel-in-progress: false
+
+env:
+  ACR: acrfiapyuri
+  RG: rg-fcg
+  AKS: aks-fcg
+  NS: fcg
+  APP: catalog-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Testes unitários
+        run: dotnet test tests/Catalog.Tests/Catalog.Tests.csproj -c Release
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build e push da imagem (tag = commit)
+        run: |
+          TAG=sha-${GITHUB_SHA::7}
+          IMG=$ACR.azurecr.io/$APP:$TAG
+          az acr login --name $ACR
+          docker build -t $IMG .
+          docker push $IMG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.RG }}
+          cluster-name: ${{ env.AKS }}
+
+      - name: Secret da API
+        run: |
+          kubectl -n $NS create secret generic catalog-secret \
+            --from-literal=ConnectionStrings__DefaultConnection='${{ secrets.DB_CONN }}' \
+            --from-literal=JwtSettings__SecretKey='${{ secrets.JWT_SECRET }}' \
+            --from-literal=RabbitMq__User='${{ secrets.RABBIT_USER }}' \
+            --from-literal=RabbitMq__Pass='${{ secrets.RABBIT_PASS }}' \
+            --from-literal=MongoSettings__ConnectionString='${{ secrets.MONGO_CONN }}' \
+            --from-literal=RedisSettings__ConnectionString='${{ secrets.REDIS_CONN }}' \
+            --from-literal=Elasticsearch__Url='${{ secrets.ES_URL }}' \
+            --from-literal=Elasticsearch__ApiKey='${{ secrets.ES_APIKEY }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy (rolling update)
+        run: |
+          sed -i "s/IMAGE_TAG/$TAG/" k8s/deployment.yaml
+          kubectl apply -f k8s/
+          kubectl -n $NS rollout status deployment/$APP --timeout=300s
