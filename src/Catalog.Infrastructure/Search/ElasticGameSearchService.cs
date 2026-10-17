@@ -51,11 +51,13 @@ namespace Catalog.Infrastructure.Search
         public async Task EnsureIndexAsync(IEnumerable<GameDto> games, CancellationToken ct = default)
         {
             var exists = await _client.Indices.ExistsAsync(_index, ct);
-            if (exists.Exists)
-                return;
+            if (!exists.Exists)
+            {
+                var create = await _client.Indices.CreateAsync(_index, ct);
+                EnsureValid(create.IsValidResponse, create.DebugInformation);
+            }
 
-            var create = await _client.Indices.CreateAsync(_index, ct);
-            EnsureValid(create.IsValidResponse, create.DebugInformation);
+            // Sempre reenvia todos os jogos (upsert por _id): um boot que falhou no meio não deixa o índice vazio.
 
             var docs = games.ToList();
             if (docs.Count == 0)
