@@ -1,0 +1,78 @@
+# CI/CD da catalog-api no Azure DevOps (Fase 4).
+# main -> testes -> imagem Docker (tag sha-<commit>) no ACR -> rolling update no AKS.
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  azureSubscription: azure-fcg
+  acr: acrfiapyuri
+  resourceGroup: rg-fcg
+  aksName: aks-fcg
+  namespace: fcg
+  app: catalog-api
+
+stages:
+  - stage: BuildTest
+    displayName: Build e testes unitários
+    jobs:
+      - job: Test
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: sdk
+              version: 8.0.x
+          - script: dotnet test tests/Catalog.Tests/Catalog.Tests.csproj -c Release --logger trx --results-directory $(Agent.TempDirectory)/tests
+            displayName: dotnet test
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '$(Agent.TempDirectory)/tests/*.trx'
+              testRunTitle: $(app) - testes unitários
+
+  - stage: Docker
+    displayName: Imagem Docker no ACR
+    dependsOn: BuildTest
+    jobs:
+      - job: BuildPush
+        steps:
+          - task: AzureCLI@2
+            displayName: docker build + push (tag sha-commit)
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                TAG=sha-${BUILD_SOURCEVERSION:0:7}
+                IMG=$(acr).azurecr.io/$(app):$TAG
+                az acr login --name $(acr)
+                docker build -t $IMG .
+                docker push $IMG
+
+  - stage: Deploy
+    displayName: Deploy no AKS (rolling update)
+    dependsOn: Docker
+    jobs:
+      - deployment: Deploy
+        environment: fcg-producao
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: kubectl apply + rollout status
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      TAG=sha-${BUILD_SOURCEVERSION:0:7}
+                      az aks get-credentials -g $(resourceGroup) -n $(aksName) --overwrite-existing
+                      sed -i "s/IMAGE_TAG/$TAG/" k8s/deployment.yaml
+                      kubectl apply -f k8s/
+                      kubectl -n $(namespace) rollout status deployment/$(app) --timeout=300s

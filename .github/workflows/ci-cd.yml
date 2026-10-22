@@ -5,6 +5,8 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Deploy oficial roda no Azure DevOps (azure-pipelines.yml); aqui o deploy é só manual.
+  workflow_dispatch:
 
 concurrency:
   group: deploy-catalog-api
@@ -29,7 +31,7 @@ jobs:
         run: dotnet test tests/Catalog.Tests/Catalog.Tests.csproj -c Release
 
   deploy:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     steps:
