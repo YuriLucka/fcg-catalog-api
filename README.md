@@ -34,7 +34,7 @@ Serviço responsável pelo catálogo de jogos e pelo fluxo de compra da platafor
 | `Elasticsearch__ApiKey`                | Não         | vazio                                              | API key do Elastic Cloud (Secret); vazio = sem autenticação |
 | `Elasticsearch__IndexName`             | Não         | `games`                                            | Índice dos jogos                   |
 
-> Nenhum valor sensível fica versionado: no Docker Compose eles vêm do `.env` da orchestration (ver `.env.example`); no AKS, de Kubernetes Secrets criados pelo setup/pipeline a partir de GitHub Secrets.
+> Nenhum valor sensível fica versionado: no Docker Compose eles vêm do `.env` da orchestration (ver `.env.example`); no AKS, de Kubernetes Secrets criados pelo `infra/azure-setup.sh` (orchestration) a partir do mesmo `.env`; a pipeline não manipula segredos.
 > No Docker Compose e K8s, `JwtSettings__Issuer` = `FiapCloudGames` e `ConnectionStrings__DefaultConnection` aponta para `catalog-db`.
 
 ## Endpoints
